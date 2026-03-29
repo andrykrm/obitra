@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 
 /* ═══════════════════════════════════════
    THEME CONFIG
@@ -1441,16 +1441,18 @@ export default function TradingHub() {
 
       {/* ══ SIDEBAR ══ */}
       <div style={{
-        width: 195, minWidth: 195,
-        background: theme === "dark" ? "rgba(255,255,255,0.03)" : T.card,
+        width: isMobile ? 260 : 195, minWidth: isMobile ? 260 : 195,
+        background: isMobile ? (theme === "dark" ? "#111111" : "#ffffff") : (theme === "dark" ? "rgba(255,255,255,0.03)" : T.card),
         borderRight: `1px solid ${T.glassBorder}`,
-        display: "flex", flexDirection: "column", padding: "12px 0",
+        display: "flex", flexDirection: "column",
+        paddingTop: isMobile ? "max(12px, env(safe-area-inset-top))" : 12, paddingBottom: 0, paddingLeft: 0, paddingRight: 0,
         transition: "transform 0.3s ease, background 0.3s",
-        backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur,
+        backdropFilter: isMobile ? "none" : T.glassBlur, WebkitBackdropFilter: isMobile ? "none" : T.glassBlur,
         zIndex: 100,
         ...(isMobile ? {
           position: "fixed", top: 0, left: 0, bottom: 0,
           transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
+          boxShadow: sidebarOpen ? "8px 0 32px rgba(0,0,0,0.5)" : "none",
         } : {}),
       }}>
         <div style={{ padding: "0 15px 16px", borderBottom: `1px solid ${T.glassBorder}` }}>
@@ -1529,7 +1531,7 @@ export default function TradingHub() {
       </div>
 
       {/* ══ MAIN CONTENT ══ */}
-      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? 12 : 20, position: "relative", zoom: isMobile ? 1 : fontScale, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? "12px 12px" : 20, paddingTop: isMobile ? "max(12px, env(safe-area-inset-top))" : 20, position: "relative", zoom: isMobile ? 1 : fontScale, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
         <StarField theme={theme} />
 
         {/* Header */}
@@ -2544,7 +2546,7 @@ export default function TradingHub() {
         @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 0 ${T.accent}00; } 50% { box-shadow: 0 0 12px 2px ${T.accent}30; } }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+        html, body { height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; width: 100%; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${theme === "dark" ? "rgba(255,255,255,0.08)" : T.glassBorder}; border-radius: 4px; }
@@ -2573,3 +2575,4 @@ export default function TradingHub() {
       `}</style>
     </div>
   );
+}
