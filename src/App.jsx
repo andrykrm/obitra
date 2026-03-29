@@ -1386,7 +1386,7 @@ export default function TradingHub() {
   // ── LOGIN SCREEN ──
   if (!userId) {
     return (
-      <div style={{ display: "flex", height: "100vh", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, alignItems: "center", justifyContent: "center", transition: "background 0.3s", position: "relative", overflow: "hidden", zoom: fontScale }}>
+      <div style={{ display: "flex", height: "100dvh", minHeight: "-webkit-fill-available", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, alignItems: "center", justifyContent: "center", transition: "background 0.3s", position: "relative", overflow: "hidden", zoom: isMobile ? 1 : fontScale }}>
         <StarField theme={theme} />
         <div style={{ position: "fixed", top: 18, right: 18, display: "flex", gap: 6, zIndex: 2 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 2, background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 20, padding: 2, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur }}>
@@ -1431,7 +1431,7 @@ export default function TradingHub() {
 
   // ── MAIN APP ──
   return (
-    <div style={{ display: "flex", height: "100vh", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, overflow: "hidden", transition: "background 0.3s", position: "relative" }}>
+    <div className="ob-safe" style={{ display: "flex", height: "100dvh", minHeight: "-webkit-fill-available", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, overflow: "hidden", transition: "background 0.3s", position: "relative" }}>
       {theme === "dark" && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 20% 20%, rgba(90,125,159,0.06) 0%, transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(122,157,191,0.04) 0%, transparent 50%)", pointerEvents: "none", zIndex: 0 }} />}
 
       {/* Mobile backdrop */}
@@ -1529,7 +1529,7 @@ export default function TradingHub() {
       </div>
 
       {/* ══ MAIN CONTENT ══ */}
-      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? 12 : 20, position: "relative", zoom: fontScale, display: tab === "chat" ? "flex" : "block", flexDirection: "column" }}>
+      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? 12 : 20, position: "relative", zoom: isMobile ? 1 : fontScale, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
         <StarField theme={theme} />
 
         {/* Header */}
@@ -2543,12 +2543,22 @@ export default function TradingHub() {
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 0 ${T.accent}00; } 50% { box-shadow: 0 0 12px 2px ${T.accent}30; } }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; width: 100%; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${theme === "dark" ? "rgba(255,255,255,0.08)" : T.glassBorder}; border-radius: 4px; }
         select option { background: ${theme === "dark" ? "#1a1a1a" : "#fff"}; color: ${T.text}; }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: ${theme === "dark" ? "invert(0.7)" : "none"}; }
+        /* iOS: prevent auto-zoom on input focus */
+        @media screen and (max-width: 768px) {
+          input, select, textarea { font-size: 16px !important; }
+          input[type="number"] { font-size: 16px !important; }
+        }
+        /* iOS safe areas */
+        @supports (padding: env(safe-area-inset-top)) {
+          .ob-safe { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+        }
         .ob-card { transition: all 0.2s ease; }
         .ob-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 0 0 1px ${T.accent}15; }
         .ob-btn { transition: all 0.15s ease; }
