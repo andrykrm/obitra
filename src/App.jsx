@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
+﻿import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 
 /* ═══════════════════════════════════════
    THEME CONFIG
@@ -2544,7 +2544,7 @@ export default function TradingHub() {
         @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 0 ${T.accent}00; } 50% { box-shadow: 0 0 12px 2px ${T.accent}30; } }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; width: 100%; }
+        html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${theme === "dark" ? "rgba(255,255,255,0.08)" : T.glassBorder}; border-radius: 4px; }
@@ -2573,4 +2573,3 @@ export default function TradingHub() {
       `}</style>
     </div>
   );
-}
