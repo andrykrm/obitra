@@ -1455,7 +1455,7 @@ export default function TradingHub() {
         background: isMobile ? (theme === "dark" ? "#111111" : "#ffffff") : (theme === "dark" ? "rgba(255,255,255,0.03)" : T.card),
         borderRight: `1px solid ${T.glassBorder}`,
         display: "flex", flexDirection: "column",
-        paddingTop: isMobile ? "max(12px, env(safe-area-inset-top))" : 12, paddingBottom: 0, paddingLeft: 0, paddingRight: 0,
+        paddingTop: isMobile ? "max(12px, env(safe-area-inset-top))" : 12, paddingBottom: isMobile ? "max(8px, env(safe-area-inset-bottom))" : 0, paddingLeft: 0, paddingRight: 0,
         transition: "transform 0.3s ease, background 0.3s",
         backdropFilter: isMobile ? "none" : T.glassBlur, WebkitBackdropFilter: isMobile ? "none" : T.glassBlur,
         zIndex: 100,
@@ -1541,11 +1541,11 @@ export default function TradingHub() {
       </div>
 
       {/* ══ MAIN CONTENT ══ */}
-      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? "8px 10px" : 20, paddingTop: isMobile ? "max(8px, env(safe-area-inset-top))" : 20, position: "relative", fontSize: baseFontSize, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? "0 10px 10px" : 20, paddingTop: isMobile ? 0 : 20, paddingBottom: isMobile ? "max(10px, env(safe-area-inset-bottom))" : 20, position: "relative", fontSize: baseFontSize, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
         <StarField theme={theme} />
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tab === "chat" ? 8 : 14, position: "relative", zIndex: 1, flexShrink: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tab === "chat" ? 6 : 10, position: "relative", zIndex: 1, flexShrink: 0, paddingTop: isMobile ? 6 : 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {isMobile && (
               <div onClick={() => setSidebarOpen(true)}
@@ -1563,6 +1563,42 @@ export default function TradingHub() {
         {/* ═══ DASHBOARD ═══ */}
         {tab === "dashboard" && (
           <div style={{ position: "relative", zIndex: 1 }}>
+
+            {/* Red Folder — Today + Tomorrow */}
+            <div className="ob-card" style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 14, marginBottom: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>{t("redFolder")}</span>
+                <span onClick={() => setTab("news")} style={{ fontSize: 9, color: T.accent, cursor: "pointer" }}>{t("seeAll")}</span>
+              </div>
+              {(() => {
+                const today = new Date().toISOString().slice(0, 10);
+                const tmr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+                const relevant = NEWS_EVENTS.filter(e => e.date === today || e.date === tmr);
+                if (relevant.length === 0) return <div style={{ fontSize: 10, color: T.textMuted, textAlign: "center", padding: 8 }}>{lang === "de" ? "Keine Red-Folder Events heute/morgen" : "No red folder events today/tomorrow"}</div>;
+                let lastDate = "";
+                return relevant.map((e, i) => {
+                  const showDate = e.date !== lastDate;
+                  lastDate = e.date;
+                  const isToday = e.date === today;
+                  return (
+                    <div key={i}>
+                      {showDate && (
+                        <div style={{ fontSize: 9, fontWeight: 700, color: T.accent, marginTop: i > 0 ? 6 : 0, marginBottom: 4, padding: "2px 6px", background: `${T.accent}10`, borderRadius: 4, display: "inline-block" }}>
+                          {isToday ? (lang === "de" ? "Heute" : "Today") : (lang === "de" ? "Morgen" : "Tomorrow")} — {e.date}
+                        </div>
+                      )}
+                      <div style={{ display: "grid", gridTemplateColumns: "44px 32px 1fr 50px 50px", alignItems: "center", padding: "4px 6px", borderRadius: 4, background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent", gap: 4, fontSize: 10 }}>
+                        <span style={{ fontFamily: "'Space Grotesk'", fontSize: 9, color: T.textDim }}>{e.time}</span>
+                        <span style={{ fontSize: 7, fontWeight: 700, padding: "1px 4px", borderRadius: 4, background: e.currency === "USD" ? `${T.green}20` : `${T.accent}20`, color: e.currency === "USD" ? T.green : T.accentLight, textAlign: "center" }}>{e.currency}</span>
+                        <span style={{ fontWeight: 500, fontSize: 10 }}>{e.event}</span>
+                        <span style={{ textAlign: "right", fontFamily: "'Space Grotesk'", fontSize: 8, color: T.textDim }}>{e.forecast || "—"}</span>
+                        <span style={{ textAlign: "right", fontFamily: "'Space Grotesk'", fontSize: 8, color: T.textDim }}>{e.previous || "—"}</span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
 
             {/* Compound Forecast + Session Performance */}
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.6fr 1fr", gap: 12, marginBottom: 18 }}>
@@ -1729,41 +1765,6 @@ export default function TradingHub() {
               </div>
             </div>
 
-            {/* Red Folder — Today + Tomorrow */}
-            <div className="ob-card" style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 16, marginTop: 12 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-                <span style={{ fontSize: 12, fontWeight: 700 }}>{t("redFolder")}</span>
-                <span onClick={() => setTab("news")} style={{ fontSize: 9, color: T.accent, cursor: "pointer" }}>{t("seeAll")}</span>
-              </div>
-              {(() => {
-                const today = new Date().toISOString().slice(0, 10);
-                const tmr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-                const relevant = NEWS_EVENTS.filter(e => e.date === today || e.date === tmr);
-                if (relevant.length === 0) return <div style={{ fontSize: 10, color: T.textMuted, textAlign: "center", padding: 10 }}>{lang === "de" ? "Keine Red-Folder Events heute/morgen" : "No red folder events today/tomorrow"}</div>;
-                let lastDate = "";
-                return relevant.map((e, i) => {
-                  const showDate = e.date !== lastDate;
-                  lastDate = e.date;
-                  const isToday = e.date === today;
-                  return (
-                    <div key={i}>
-                      {showDate && (
-                        <div style={{ fontSize: 9, fontWeight: 700, color: T.accent, marginTop: i > 0 ? 8 : 0, marginBottom: 4, padding: "2px 6px", background: `${T.accent}10`, borderRadius: 4, display: "inline-block" }}>
-                          {isToday ? (lang === "de" ? "Heute" : "Today") : (lang === "de" ? "Morgen" : "Tomorrow")} — {e.date}
-                        </div>
-                      )}
-                      <div style={{ display: "grid", gridTemplateColumns: "44px 32px 1fr 50px 50px", alignItems: "center", padding: "5px 7px", borderRadius: 4, background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent", gap: 5, fontSize: 10 }}>
-                        <span style={{ fontFamily: "'Space Grotesk'", fontSize: 9, color: T.textDim }}>{e.time}</span>
-                        <span style={{ fontSize: 7, fontWeight: 700, padding: "1px 4px", borderRadius: 4, background: e.currency === "USD" ? `${T.green}20` : `${T.accent}20`, color: e.currency === "USD" ? T.green : T.accentLight, textAlign: "center" }}>{e.currency}</span>
-                        <span style={{ fontWeight: 500, fontSize: 10 }}>{e.event}</span>
-                        <span style={{ textAlign: "right", fontFamily: "'Space Grotesk'", fontSize: 8, color: T.textDim }}>{e.forecast || "—"}</span>
-                        <span style={{ textAlign: "right", fontFamily: "'Space Grotesk'", fontSize: 8, color: T.textDim }}>{e.previous || "—"}</span>
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
           </div>
         )}
         {/* ═══ TRADINGVIEW ═══ */}
@@ -1850,12 +1851,11 @@ export default function TradingHub() {
             {/* Stats View */}
             {jView === "stats" && (
               <div>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: 10, marginBottom: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}>
                   <StatCard icon="target" label={t("winRate")} value={`${stats.winRate.toFixed(1)}%`} sub={`${stats.wins}W / ${stats.losses}L`} T={T} />
                   <StatCard icon="dollar" label={t("totalPnl")} value={`$${stats.totalPnl.toFixed(2)}`} sub={`Bal: $${stats.balance.toLocaleString()}`} T={T} />
                   <StatCard icon="ratio" label={t("profitFactor")} value={stats.pf === Infinity ? "∞" : stats.pf.toFixed(2)} sub={`RR: ${stats.avgRR.toFixed(2)}`} T={T} />
-                  <StatCard icon="flame" label={t("streak")} value={stats.streak > 0 ? `${stats.streak}${stats.streakType}` : "—"} sub={`Max: ${stats.maxW}W/${stats.maxL}L`} T={T} />
-                  <StatCard icon="barChart" label={t("expectancy")} value={`$${stats.expectancy.toFixed(2)}`} sub={t("perTrade")} T={T} />
+                  <StatCard icon="barChart" label={t("expectancy")} value={`$${stats.expectancy.toFixed(2)}`} sub={`${t("perTrade")} | ${stats.streak > 0 ? stats.streak + stats.streakType : "—"} Streak`} T={T} />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 10, marginBottom: 14 }}>
                   <StatCard icon="trendUp" label={t("avgWin")} value={`$${stats.avgWin.toFixed(2)}`} T={T} />
@@ -2014,10 +2014,12 @@ export default function TradingHub() {
                   </div>
                   <InputField label={t("session")} options={["Asian", "London", "New York", "Overlap"]} value={form.session} onChange={v => setForm(f => ({ ...f, session: v }))} T={T} />
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(5, 1fr)", gap: 12, marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 12 }}>
                   <InputField label={t("entry")} type="number" step="0.00001" value={form.entryPrice} onChange={v => setForm(f => updateFormAuto({ ...f, entryPrice: v }))} placeholder="1.08420" T={T} />
                   <InputField label="SL" type="number" step="0.00001" value={form.slPrice} onChange={v => setForm(f => updateFormAuto({ ...f, slPrice: v }))} placeholder="1.08200" T={T} />
                   <InputField label={t("exit")} type="number" step="0.00001" value={form.exitPrice} onChange={v => setForm(f => updateFormAuto({ ...f, exitPrice: v }))} T={T} />
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10, marginBottom: 12 }}>
                   <InputField label={t("lots")} type="number" step="0.01" value={form.lotSize} onChange={v => setForm(f => ({ ...f, lotSize: v }))} T={T} />
                   <InputField label={t("pnl")} type="number" step="0.01" value={form.pnl} onChange={v => setForm(f => ({ ...f, pnl: v }))} placeholder="+125.50" T={T} />
                 </div>
@@ -2302,10 +2304,10 @@ export default function TradingHub() {
                       <div key={c.name} style={{ marginBottom: 10 }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                           <span style={{ fontSize: 10, fontWeight: 600 }}>{c.name}</span>
-                          <span style={{ fontSize: 9, fontFamily: "'Space Grotesk'", fontWeight: 600, color: avg >= 0 ? T.green : T.red }}>{avg >= 0 ? "+" : ""}{avg.toFixed(3)}%</span>
+                          <span style={{ fontSize: 9, fontFamily: "'Space Grotesk'", fontWeight: 600, color: T.accentLight }}>{avg >= 0 ? "+" : ""}{avg.toFixed(3)}%</span>
                         </div>
                         <div style={{ height: 6, background: "rgba(255,255,255,0.04)", borderRadius: 4, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${strength}%`, background: avg >= 0 ? T.green : T.red, borderRadius: 4, transition: "width 0.5s" }} />
+                          <div style={{ height: "100%", width: `${strength}%`, background: `linear-gradient(90deg, ${T.accent}, ${T.accentLight})`, borderRadius: 4, transition: "width 0.5s", opacity: strength > 50 ? 1 : 0.5 }} />
                         </div>
                       </div>
                     );
@@ -2352,10 +2354,10 @@ export default function TradingHub() {
               <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10 }}>{lang === "de" ? "Sessions" : "Active Sessions"}</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
                 {sessions.map(s => (
-                  <div key={s.name} style={{ textAlign: "center", padding: "10px 6px", borderRadius: 8, background: s.open ? `${T.green}10` : "rgba(255,255,255,0.02)", border: `1px solid ${s.open ? T.green + "30" : T.glassBorder}` }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.open ? T.green : T.textMuted, margin: "0 auto 6px", boxShadow: s.open ? `0 0 8px ${T.green}60` : "none" }} />
+                  <div key={s.name} style={{ textAlign: "center", padding: "10px 6px", borderRadius: 8, background: s.open ? `${T.accent}10` : "rgba(255,255,255,0.02)", border: `1px solid ${s.open ? T.accent + "30" : T.glassBorder}` }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.open ? T.accent : T.textMuted, margin: "0 auto 6px", boxShadow: s.open ? `0 0 8px ${T.accent}60` : "none" }} />
                     <div style={{ fontSize: 10, fontWeight: 600, color: s.open ? T.text : T.textDim }}>{s.name}</div>
-                    <div style={{ fontSize: 8, fontWeight: 600, color: s.open ? T.green : T.textMuted, marginTop: 2 }}>{s.open ? (lang === "de" ? "AKTIV" : "OPEN") : (lang === "de" ? "ZU" : "CLOSED")}</div>
+                    <div style={{ fontSize: 8, fontWeight: 600, color: s.open ? T.accentLight : T.textMuted, marginTop: 2 }}>{s.open ? (lang === "de" ? "AKTIV" : "OPEN") : (lang === "de" ? "ZU" : "CLOSED")}</div>
                   </div>
                 ))}
               </div>
@@ -2557,7 +2559,7 @@ export default function TradingHub() {
                   })}
                   <div ref={chatEndRef} />
                 </div>
-                <div style={{ padding: "6px 10px", borderTop: `1px solid ${T.glassBorder}`, flexShrink: 0 }}>
+                <div style={{ padding: isMobile ? "6px 10px max(6px, env(safe-area-inset-bottom))" : "6px 10px", borderTop: `1px solid ${T.glassBorder}`, flexShrink: 0 }}>
                   {chatImgUrl && (
                     <div style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
                       <img src={chatImgUrl} style={{ maxHeight: 36, borderRadius: 4 }} />
