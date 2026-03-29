@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
+import { fbGet, fbSet, fbListen } from "./firebase.js";
 
 /* ═══════════════════════════════════════
    THEME CONFIG
@@ -217,11 +218,11 @@ async function sSet(k, v) {
   try { localStorage.setItem(`ob:${k}`, JSON.stringify(v)); } catch (e) { console.error(e); }
 }
 async function sGetShared(k) {
-  try { const v = localStorage.getItem(`ob-shared:${k}`); return v ? JSON.parse(v) : null; }
+  try { return await fbGet(k); }
   catch { return null; }
 }
 async function sSetShared(k, v) {
-  try { localStorage.setItem(`ob-shared:${k}`, JSON.stringify(v)); } catch (e) { console.error(e); }
+  try { await fbSet(k, v); } catch (e) { console.error(e); }
 }
 
 /* ═══════════════════════════════════════
@@ -244,49 +245,58 @@ const PAIRS = [
   { symbol: "EUR/GBP", base: 0.8568, spread: 1.3 },
 ];
 
-const NEWS_EVENTS = [
-  { date: "2026-03-23", time: "08:30", currency: "USD", event: "Core CPI m/m", forecast: "0.3%", previous: "0.4%", actual: "0.2%", surprise: "negative" },
-  { date: "2026-03-23", time: "08:30", currency: "USD", event: "CPI y/y", forecast: "3.1%", previous: "3.2%", actual: "2.9%", surprise: "negative" },
-  { date: "2026-03-23", time: "10:00", currency: "USD", event: "FOMC Statement", forecast: "", previous: "", actual: "", surprise: "" },
-  { date: "2026-03-24", time: "10:00", currency: "USD", event: "Federal Funds Rate", forecast: "5.50%", previous: "5.50%", actual: "", surprise: "" },
-  { date: "2026-03-24", time: "08:00", currency: "EUR", event: "ECB Main Refinancing Rate", forecast: "4.50%", previous: "4.50%", actual: "", surprise: "" },
-  { date: "2026-03-24", time: "08:30", currency: "EUR", event: "ECB Press Conference", forecast: "", previous: "", actual: "", surprise: "" },
-  { date: "2026-03-25", time: "08:00", currency: "EUR", event: "German CPI m/m", forecast: "0.2%", previous: "0.1%", actual: "", surprise: "" },
-  { date: "2026-03-25", time: "10:00", currency: "USD", event: "ISM Manufacturing PMI", forecast: "47.2", previous: "46.8", actual: "", surprise: "" },
-  { date: "2026-03-26", time: "08:30", currency: "USD", event: "Non-Farm Employment Change", forecast: "180K", previous: "216K", actual: "", surprise: "" },
-  { date: "2026-03-26", time: "08:30", currency: "USD", event: "Unemployment Rate", forecast: "3.8%", previous: "3.7%", actual: "", surprise: "" },
-  { date: "2026-03-26", time: "14:00", currency: "USD", event: "FOMC Meeting Minutes", forecast: "", previous: "", actual: "", surprise: "" },
-  { date: "2026-03-27", time: "09:00", currency: "EUR", event: "French Flash Mfg PMI", forecast: "43.5", previous: "42.1", actual: "", surprise: "" },
-  { date: "2026-03-27", time: "09:30", currency: "EUR", event: "German Flash Mfg PMI", forecast: "44.0", previous: "43.3", actual: "", surprise: "" },
-  { date: "2026-03-28", time: "08:30", currency: "USD", event: "Advance GDP q/q", forecast: "2.0%", previous: "4.9%", actual: "", surprise: "" },
-  { date: "2026-03-28", time: "08:30", currency: "USD", event: "Core PCE Price Index m/m", forecast: "0.2%", previous: "0.2%", actual: "", surprise: "" },
+const _today = new Date();
+const _d = (offset) => { const d = new Date(_today); d.setDate(d.getDate() + offset); return d.toISOString().slice(0, 10); };
+
+// Fallback static events (used if API fails)
+const STATIC_EVENTS = [
+  { date: _d(0), time: "08:30", currency: "USD", event: "Core PCE Price Index m/m", forecast: "0.2%", previous: "0.3%", actual: "", surprise: "" },
+  { date: _d(0), time: "10:00", currency: "USD", event: "Pending Home Sales m/m", forecast: "1.5%", previous: "-4.9%", actual: "", surprise: "" },
+  { date: _d(1), time: "08:30", currency: "USD", event: "Non-Farm Employment Change", forecast: "180K", previous: "151K", actual: "", surprise: "" },
+  { date: _d(1), time: "08:30", currency: "USD", event: "Unemployment Rate", forecast: "4.1%", previous: "4.1%", actual: "", surprise: "" },
+  { date: _d(2), time: "08:00", currency: "EUR", event: "German CPI m/m", forecast: "0.3%", previous: "0.4%", actual: "", surprise: "" },
+  { date: _d(2), time: "10:00", currency: "EUR", event: "EU CPI Flash Estimate y/y", forecast: "2.3%", previous: "2.3%", actual: "", surprise: "" },
+  { date: _d(3), time: "08:30", currency: "USD", event: "ADP Non-Farm Employment", forecast: "148K", previous: "140K", actual: "", surprise: "" },
+  { date: _d(3), time: "10:00", currency: "USD", event: "JOLTS Job Openings", forecast: "7.74M", previous: "7.74M", actual: "", surprise: "" },
+  { date: _d(4), time: "08:30", currency: "USD", event: "Trade Balance", forecast: "-68.7B", previous: "-68.3B", actual: "", surprise: "" },
+  { date: _d(4), time: "10:00", currency: "USD", event: "ISM Services PMI", forecast: "53.0", previous: "53.5", actual: "", surprise: "" },
+  { date: _d(5), time: "08:30", currency: "USD", event: "Unemployment Claims", forecast: "225K", previous: "224K", actual: "", surprise: "" },
+  { date: _d(5), time: "08:00", currency: "EUR", event: "ECB Meeting Minutes", forecast: "", previous: "", actual: "", surprise: "" },
 ];
 
-const TRUMP_POSTS = [
-  { time: "2h ago", text: "TARIFFS on China going UP to 60%! They've been ripping us off for DECADES. Time to bring manufacturing HOME!", likes: "142K", reposts: "38K", impact: "high" },
-  { time: "5h ago", text: "The Fed is DESTROYING our economy with these insane interest rates. Powell needs to CUT NOW!", likes: "98K", reposts: "24K", impact: "high" },
-  { time: "8h ago", text: "Just spoke with President Xi. Great conversation about TRADE. Big announcement coming SOON!", likes: "201K", reposts: "52K", impact: "medium" },
-  { time: "12h ago", text: "Stock Market hit an ALL TIME HIGH today. Under my leadership, your 401k is SOARING!", likes: "167K", reposts: "41K", impact: "low" },
-  { time: "1d ago", text: "Executive Order signed: ALL imports from the EU will face a 25% tariff effective immediately!", likes: "189K", reposts: "67K", impact: "high" },
-];
-
-const ECON_TWEETS = [
-  { author: "Nouriel Roubini", handle: "@Nouriel", time: "1h ago", text: "US CPI below expectations is significant. Disinflationary trend intact. Markets repricing rate cuts.", verified: true },
-  { author: "Mohamed El-Erian", handle: "@elerianm", time: "2h ago", text: "ECB hawkish despite weakening growth. Fed/ECB divergence will pressure EUR/USD in Q2.", verified: true },
-  { author: "Larry Summers", handle: "@LHSummers", time: "3h ago", text: "Labor market resilient but leading indicators softening. Not IF the Fed cuts but WHEN.", verified: true },
-  { author: "Cathie Wood", handle: "@CathieDWood", time: "4h ago", text: "Deflation is the bigger risk. AI productivity + demographics = structurally lower prices.", verified: true },
-  { author: "Peter Schiff", handle: "@PeterSchiff", time: "5h ago", text: "Gold breaking $2,400. Dollar decline accelerating. Inflation hasn't been beaten.", verified: true },
-  { author: "Jim Bianco", handle: "@biancoresearch", time: "6h ago", text: "10Y yield above 4.5%. Bond vigilantes: fiscal deficits matter.", verified: true },
-];
+// Fetch live economic calendar
+async function fetchEconomicCalendar() {
+  try {
+    const res = await fetch("https://economic-calendar-api.vercel.app/api/events");
+    if (!res.ok) throw new Error("API error");
+    const data = await res.json();
+    // Filter high-impact events and map to our format
+    return data
+      .filter(e => e.impact === "high" || e.impact === "medium")
+      .slice(0, 30)
+      .map(e => ({
+        date: e.date || _d(0),
+        time: e.time || "—",
+        currency: e.currency || "USD",
+        event: e.title || e.event || "Unknown",
+        forecast: e.forecast || "",
+        previous: e.previous || "",
+        actual: e.actual || "",
+        surprise: e.actual && e.forecast ? (parseFloat(e.actual) > parseFloat(e.forecast) ? "positive" : "negative") : "",
+      }));
+  } catch {
+    return null; // Will use STATIC_EVENTS as fallback
+  }
+}
 
 const HIGH_IMPACT_NEWS = [
-  { time: "14min ago", headline: "US CPI prints 2.9% YoY vs 3.1% expected — biggest downside miss in 6 months", source: "Reuters", currency: "USD", sentiment: "dovish" },
-  { time: "32min ago", headline: "ECB's Lagarde signals no rate cuts before Q3 despite weakening PMI data", source: "ECB", currency: "EUR", sentiment: "hawkish" },
-  { time: "1h ago", headline: "White House confirms 25% tariff on all EU imports effective immediately", source: "Bloomberg", currency: "EUR", sentiment: "bearish" },
-  { time: "2h ago", headline: "US 10Y yield spikes to 4.52% following strong jobs report revision", source: "CNBC", currency: "USD", sentiment: "hawkish" },
-  { time: "3h ago", headline: "German manufacturing PMI falls to 42.1, lowest since pandemic", source: "S&P Global", currency: "EUR", sentiment: "bearish" },
-  { time: "4h ago", headline: "Fed's Waller hints at potential rate cut if disinflation continues", source: "Fed", currency: "USD", sentiment: "dovish" },
-  { time: "5h ago", headline: "Eurozone unemployment rises to 6.5%, above 6.4% consensus", source: "Eurostat", currency: "EUR", sentiment: "bearish" },
+  { time: "12min ago", headline: "Core PCE expected at 0.2% — in line with Fed's disinflation target, markets await confirmation", source: "Reuters", currency: "USD", sentiment: "dovish" },
+  { time: "28min ago", headline: "ECB's Lane: 'Inflation path remains uncertain, data-dependent approach continues'", source: "ECB", currency: "EUR", sentiment: "hawkish" },
+  { time: "1h ago", headline: "Trump signals new tariff wave on EU auto imports — 25% discussed", source: "Bloomberg", currency: "EUR", sentiment: "bearish" },
+  { time: "2h ago", headline: "US 10Y yield steady at 4.25% ahead of key employment data this week", source: "CNBC", currency: "USD", sentiment: "neutral" },
+  { time: "3h ago", headline: "German Ifo Business Climate falls to 86.7, below 87.5 consensus", source: "Ifo Institute", currency: "EUR", sentiment: "bearish" },
+  { time: "5h ago", headline: "Fed's Waller: 'Two rate cuts still appropriate for 2026 if data cooperates'", source: "Fed", currency: "USD", sentiment: "dovish" },
+  { time: "6h ago", headline: "Eurozone Q1 GDP growth revised down to 0.1% from 0.2%", source: "Eurostat", currency: "EUR", sentiment: "bearish" },
 ];
 
 /* ═══════════════════════════════════════
@@ -1013,6 +1023,8 @@ export default function TradingHub() {
   const [textSize, setTextSize] = useState("small");
   const [tab, setTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [NEWS_EVENTS, setNewsEvents] = useState(STATIC_EVENTS);
+  const lastChatCount = useRef(0);
   const [isMobile, setIsMobile] = useState(false);
 
   // Mobile detection
@@ -1074,10 +1086,6 @@ export default function TradingHub() {
   };
 
   // AI state
-  const [analysisLoading, setAnalysisLoading] = useState(false);
-  const [analysis, setAnalysis] = useState(null);
-  const [labLoading, setLabLoading] = useState(false);
-  const [labTweets, setLabTweets] = useState(null);
 
   // Chat state
   const [chatMsgs, setChatMsgs] = useState([]);
@@ -1128,8 +1136,6 @@ export default function TradingHub() {
     sGet(`${userId}:private-balance`).then(d => d !== null && setPrivateBalance(d));
     sGet(`${userId}:funded-accounts`).then(d => d && setFundedAccounts(d));
     sGet(`${userId}:chat-name`).then(d => { if (d) { setChatName(d); setChatNameSet(true); } });
-    sGet("edu-posts").then(d => d && setEduPosts(d));
-    sGet("lab-galleries").then(d => d && setLabGalleries(d));
     sGet(`${userId}:goals`).then(d => d && setGoals(d));
   }, [userId]);
 
@@ -1150,14 +1156,52 @@ export default function TradingHub() {
     return () => clearInterval(t);
   }, []);
 
-  // ── Chat polling ──
+  // ── Chat + Lab realtime via Firebase ──
   useEffect(() => {
-    if (tab !== "chat") return;
-    const poll = async () => { const d = await sGetShared("hub-chat-v2"); if (d) setChatMsgs(d); };
-    poll();
-    const t = setInterval(poll, 3000);
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Realtime chat listener — instant updates, no polling
+  useEffect(() => {
+    const unsub = fbListen("hub-chat-v2", (d) => {
+      if (d && Array.isArray(d)) {
+        // Push notification for new messages
+        if (d.length > lastChatCount.current && lastChatCount.current > 0 && tab !== "chat") {
+          const latest = d[d.length - 1];
+          if (latest && latest.name !== chatName && "Notification" in window && Notification.permission === "granted") {
+            new Notification(`Obitra — ${latest.name}`, { body: latest.text || "Sent an image", icon: "/icon-192.png" });
+          }
+        }
+        lastChatCount.current = d.length;
+        setChatMsgs(d);
+      }
+    });
+    return () => unsub && unsub();
+  }, [tab, chatName]);
+
+  // Realtime lab galleries listener
+  useEffect(() => {
+    const unsub = fbListen("lab-galleries", (d) => {
+      if (d && Array.isArray(d)) setLabGalleries(d);
+    });
+    return () => unsub && unsub();
+  }, []);
+
+  // ── Load live economic calendar ──
+  useEffect(() => {
+    fetchEconomicCalendar().then(events => {
+      if (events && events.length > 0) setNewsEvents(events);
+    });
+    // Refresh every 30 min
+    const t = setInterval(() => {
+      fetchEconomicCalendar().then(events => {
+        if (events && events.length > 0) setNewsEvents(events);
+      });
+    }, 30 * 60 * 1000);
     return () => clearInterval(t);
-  }, [tab]);
+  }, []);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMsgs]);
 
@@ -1267,6 +1311,7 @@ export default function TradingHub() {
   };
 
   const fontScale = textSize === "large" ? 1.4 : textSize === "medium" ? 1.2 : 1;
+  const baseFontSize = Math.round(13 * fontScale);
 
   const handleLogin = () => {
     const name = userInput.trim().toLowerCase().replace(/[^a-z0-9_-]/g, "");
@@ -1287,41 +1332,6 @@ export default function TradingHub() {
     setChatName(""); setChatNameSet(false);
   };
 
-  // ── AI Calls ──
-  const runAnalysis = async () => {
-    setAnalysisLoading(true);
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 1000,
-          messages: [{ role: "user", content: `You are a senior macro strategist. Provide a mechanical, logical, rational assessment.\n\nTRUMP POSTS:\n${TRUMP_POSTS.map(p => `[${p.time}] ${p.text}`).join("\n")}\n\nECONOMIST TWEETS:\n${ECON_TWEETS.map(t => `[${t.author}] ${t.text}`).join("\n")}\n\nNEWS:\n${HIGH_IMPACT_NEWS.map(n => `[${n.time}] ${n.headline} (${n.currency}, ${n.sentiment})`).join("\n")}\n\nRespond ONLY in JSON:\n{"marketSentiment":"word","sentimentScore":-100,"usdOutlook":"text","eurOutlook":"text","retailImpact":["3 bullets"],"tradingActions":[{"pair":"X","direction":"Y","rationale":"Z"}],"keyRisks":["3"],"trumpImpact":"text"}` }],
-        }),
-      });
-      const d = await res.json();
-      const txt = d.content?.map(i => i.text || "").join("") || "";
-      setAnalysis(JSON.parse(txt.replace(/```json|```/g, "").trim()));
-    } catch { setAnalysis({ error: "Analysis failed. Try again." }); }
-    setAnalysisLoading(false);
-  };
-
-  const genTweets = async () => {
-    setLabLoading(true);
-    try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 1000,
-          messages: [{ role: "user", content: `Generate 5 professional hedge fund tweet ideas. Context: CPI below expectations, ECB hawkish, Trump tariffs, Fed hints cuts, Gold $2400. Respond ONLY in JSON array: [{"tweet":"max 280 chars","topic":"tag","timing":"time","engagement":"high/medium/low"}]` }],
-        }),
-      });
-      const d = await res.json();
-      const txt = d.content?.map(i => i.text || "").join("") || "";
-      setLabTweets(JSON.parse(txt.replace(/```json|```/g, "").trim()));
-    } catch { setLabTweets(null); }
-    setLabLoading(false);
-  };
-
 
   // ── Chat ──
   const sendChat = async (imgUrl) => {
@@ -1340,24 +1350,24 @@ export default function TradingHub() {
     if (!galleryName.trim()) return;
     const g = { id: Date.now(), name: galleryName.trim(), desc: galleryDesc.trim(), thumb: galleryThumb.trim(), author: userId, posts: [], date: new Date().toLocaleDateString("en-GB") };
     const updated = [g, ...labGalleries];
-    setLabGalleries(updated); await sSet("lab-galleries", updated);
+    setLabGalleries(updated); await sSetShared("lab-galleries", updated);
     setGalleryName(""); setGalleryDesc(""); setGalleryThumb(""); setShowGalleryForm(false);
   };
   const deleteGallery = async (id) => {
     const updated = labGalleries.filter(g => g.id !== id);
-    setLabGalleries(updated); await sSet("lab-galleries", updated);
+    setLabGalleries(updated); await sSetShared("lab-galleries", updated);
     if (activeGallery === id) setActiveGallery(null);
   };
   const saveEduPost = async () => {
     if (!eduTitle.trim() || !eduBody.trim() || !activeGallery) return;
     const post = { id: Date.now(), title: eduTitle.trim(), body: eduBody.trim(), tag: eduTag, image: eduImage.trim(), author: userId, date: new Date().toLocaleDateString("en-GB") };
     const updated = labGalleries.map(g => g.id === activeGallery ? { ...g, posts: [post, ...g.posts] } : g);
-    setLabGalleries(updated); await sSet("lab-galleries", updated);
+    setLabGalleries(updated); await sSetShared("lab-galleries", updated);
     setEduTitle(""); setEduBody(""); setEduTag("concept"); setEduImage(""); setShowEduForm(false);
   };
   const deleteEduPost = async (galleryId, postId) => {
     const updated = labGalleries.map(g => g.id === galleryId ? { ...g, posts: g.posts.filter(p => p.id !== postId) } : g);
-    setLabGalleries(updated); await sSet("lab-galleries", updated);
+    setLabGalleries(updated); await sSetShared("lab-galleries", updated);
   };
 
   // ── Sidebar config ──
@@ -1386,7 +1396,7 @@ export default function TradingHub() {
   // ── LOGIN SCREEN ──
   if (!userId) {
     return (
-      <div style={{ display: "flex", height: "100dvh", minHeight: "-webkit-fill-available", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, alignItems: "center", justifyContent: "center", transition: "background 0.3s", position: "relative", overflow: "hidden", zoom: isMobile ? 1 : fontScale }}>
+      <div style={{ display: "flex", height: "100dvh", minHeight: "-webkit-fill-available", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, alignItems: "center", justifyContent: "center", transition: "background 0.3s", position: "relative", overflow: "hidden", fontSize: baseFontSize }}>
         <StarField theme={theme} />
         <div style={{ position: "fixed", top: 18, right: 18, display: "flex", gap: 6, zIndex: 2 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 2, background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 20, padding: 2, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur }}>
@@ -1531,11 +1541,11 @@ export default function TradingHub() {
       </div>
 
       {/* ══ MAIN CONTENT ══ */}
-      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? "12px 12px" : 20, paddingTop: isMobile ? "max(12px, env(safe-area-inset-top))" : 20, position: "relative", zoom: isMobile ? 1 : fontScale, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? "8px 10px" : 20, paddingTop: isMobile ? "max(8px, env(safe-area-inset-top))" : 20, position: "relative", fontSize: baseFontSize, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
         <StarField theme={theme} />
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tab === "chat" ? 8 : 18, position: "relative", zIndex: 1, flexShrink: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tab === "chat" ? 8 : 14, position: "relative", zIndex: 1, flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {isMobile && (
               <div onClick={() => setSidebarOpen(true)}
@@ -1545,37 +1555,14 @@ export default function TradingHub() {
             )}
             <div>
               <h1 style={{ fontSize: isMobile ? 15 : 17, fontWeight: 700, margin: 0 }}>{tabTitles[tab]}</h1>
-              <p style={{ fontSize: 10, color: T.textDim, margin: "2px 0 0" }}>
-                {tab === "journal" ? `${filteredTrades.length} ${t("trades")} — ${capitalMode === "private" ? t("private") : t("funded")} — Bal: $${currentBalance.toLocaleString()}` : t("subtitle")}
-              </p>
+              {tab === "journal" && <p style={{ fontSize: 10, color: T.textDim, margin: "2px 0 0" }}>{filteredTrades.length} {t("trades")} — {capitalMode === "private" ? t("private") : t("funded")} — Bal: ${currentBalance.toLocaleString()}</p>}
             </div>
-          </div>
-          <div style={{ padding: "5px 10px", borderRadius: 8, background: `${T.green}15`, color: T.green, fontSize: 9, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: T.green, animation: "pulse 2s infinite" }} />{t("live")}
           </div>
         </div>
 
         {/* ═══ DASHBOARD ═══ */}
         {tab === "dashboard" && (
           <div style={{ position: "relative", zIndex: 1 }}>
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 12, marginBottom: 18 }}>
-              {prices.slice(0, 4).map((p, i) => (
-                <div key={p.symbol} onClick={() => setSelPair(i)}
-                  className="ob-card" style={{ background: T.glass, border: `1px solid ${selPair === i ? T.accent + "40" : T.glassBorder}`, borderRadius: 14, padding: "12px 14px", cursor: "pointer", position: "relative", overflow: "hidden", backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur }}>
-                  {selPair === i && <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, ${T.accent}, ${T.accentLight})` }} />}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div>
-                      <div style={{ fontSize: 9, color: T.textDim, marginBottom: 2 }}>{p.symbol}</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "'Space Grotesk'" }}>{p.price.toFixed(pd)}</div>
-                    </div>
-                    <Spark data={p.spark} color={p.change >= 0 ? T.green : T.red} />
-                  </div>
-                  <span style={{ fontSize: 9, fontWeight: 600, color: p.change >= 0 ? T.green : T.red, fontFamily: "'Space Grotesk'" }}>
-                    {p.change >= 0 ? "+" : ""}{p.change.toFixed(3)}%
-                  </span>
-                </div>
-              ))}
-            </div>
 
             {/* Compound Forecast + Session Performance */}
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1.6fr 1fr", gap: 12, marginBottom: 18 }}>
@@ -2259,22 +2246,23 @@ export default function TradingHub() {
         {/* ═══ SOCIAL ═══ */}
         {tab === "social" && (
           <div style={{ position: "relative", zIndex: 1 }}>
-            {/* Quick Watch List */}
+            {/* What to Watch */}
             <div style={{ background: T.glass, border: `1px solid ${T.accent}20`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 14, marginBottom: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{lang === "de" ? "Worauf achten" : "What to Watch"}</div>
               {[
-                ...HIGH_IMPACT_NEWS.slice(0, 3).map(n => ({ text: `${n.headline}`, tag: n.sentiment, currency: n.currency })),
-                ...TRUMP_POSTS.filter(p => p.impact === "high").slice(0, 2).map(p => ({ text: `Trump: ${p.text.slice(0, 80)}...`, tag: "political", currency: "USD" })),
-                ...NEWS_EVENTS.filter(e => e.date === new Date().toISOString().slice(0, 10)).slice(0, 2).map(e => ({ text: `${e.time} — ${e.event}`, tag: "event", currency: e.currency })),
+                ...HIGH_IMPACT_NEWS.slice(0, 3).map(n => ({ text: n.headline, tag: n.sentiment, currency: n.currency })),
+                ...NEWS_EVENTS.filter(e => e.date === new Date().toISOString().slice(0, 10)).slice(0, 3).map(e => ({ text: `${e.time} — ${e.event}`, tag: "event", currency: e.currency })),
               ].map((item, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: i < 6 ? `1px solid ${T.glassBorder}` : "none" }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: i < 5 ? `1px solid ${T.glassBorder}` : "none" }}>
                   <span style={{ width: 4, height: 4, borderRadius: "50%", background: T.accent, flexShrink: 0 }} />
                   <span style={{ fontSize: 10, lineHeight: 1.4, flex: 1 }}>{item.text}</span>
                   <span style={{ fontSize: 7, fontWeight: 700, color: item.currency === "USD" ? T.green : T.accent, flexShrink: 0 }}>{item.currency}</span>
-                  <span style={{ fontSize: 7, fontWeight: 600, padding: "1px 5px", borderRadius: 4, flexShrink: 0, background: item.tag === "dovish" || item.tag === "bullish" ? `${T.green}15` : item.tag === "political" ? `${T.yellow}15` : item.tag === "event" ? `${T.accent}15` : `${T.red}15`, color: item.tag === "dovish" || item.tag === "bullish" ? T.green : item.tag === "political" ? T.yellow : item.tag === "event" ? T.accentLight : T.red }}>{item.tag}</span>
+                  <span style={{ fontSize: 7, fontWeight: 600, padding: "1px 5px", borderRadius: 4, flexShrink: 0, background: item.tag === "dovish" || item.tag === "bullish" ? `${T.green}15` : item.tag === "event" ? `${T.accent}15` : `${T.red}15`, color: item.tag === "dovish" || item.tag === "bullish" ? T.green : item.tag === "event" ? T.accentLight : T.red }}>{item.tag}</span>
                 </div>
               ))}
             </div>
+
+            {/* High Impact News */}
             <div style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 16, marginBottom: 14 }}>
               <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>{t("highImpactNews")}</div>
               {HIGH_IMPACT_NEWS.map((n, i) => (
@@ -2285,31 +2273,89 @@ export default function TradingHub() {
                     <div style={{ display: "flex", gap: 6, marginTop: 3 }}>
                       <span style={{ fontSize: 8, color: T.textDim }}>{n.source}</span>
                       <span style={{ fontSize: 7, fontWeight: 700, color: n.currency === "USD" ? T.green : T.accent }}>{n.currency}</span>
-                      <span style={{ fontSize: 7, fontWeight: 600, padding: "0 4px", borderRadius: 4, background: n.sentiment === "dovish" || n.sentiment === "bullish" ? `${T.green}15` : `${T.red}15`, color: n.sentiment === "dovish" || n.sentiment === "bullish" ? T.green : T.red }}>{n.sentiment}</span>
+                      <span style={{ fontSize: 7, fontWeight: 600, padding: "0 4px", borderRadius: 4, background: n.sentiment === "dovish" || n.sentiment === "bullish" ? `${T.green}15` : n.sentiment === "neutral" ? `${T.accent}15` : `${T.red}15`, color: n.sentiment === "dovish" || n.sentiment === "bullish" ? T.green : n.sentiment === "neutral" ? T.accentLight : T.red }}>{n.sentiment}</span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
+
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
+              {/* Currency Strength */}
               <div style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10 }}>{t("truthSocial")}</div>
-                {TRUMP_POSTS.map((p, i) => (
-                  <div key={i} style={{ padding: "8px 10px", borderRadius: 8, marginBottom: 4, background: "rgba(255,255,255,0.025)", borderLeft: `2px solid ${p.impact === "high" ? T.red : p.impact === "medium" ? T.yellow : T.textMuted}` }}>
-                    <div style={{ fontSize: 8, color: T.textDim, marginBottom: 3 }}>{p.time}</div>
-                    <div style={{ fontSize: 10, lineHeight: 1.5 }}>{p.text}</div>
-                  </div>
-                ))}
+                <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10 }}>{lang === "de" ? "Währungsstärke" : "Currency Strength"}</div>
+                {(() => {
+                  const currencies = [
+                    { name: "USD", pairs: [{ sym: "EUR/USD", inv: true }, { sym: "GBP/USD", inv: true }, { sym: "USD/JPY", inv: false }] },
+                    { name: "EUR", pairs: [{ sym: "EUR/USD", inv: false }] },
+                    { name: "GBP", pairs: [{ sym: "GBP/USD", inv: false }] },
+                    { name: "JPY", pairs: [{ sym: "USD/JPY", inv: true }] },
+                  ];
+                  return currencies.map(c => {
+                    const changes = c.pairs.map(p => {
+                      const pr = prices.find(x => x.symbol === p.sym);
+                      return pr ? (p.inv ? -pr.change : pr.change) : 0;
+                    });
+                    const avg = changes.reduce((s, v) => s + v, 0) / changes.length;
+                    const strength = Math.min(Math.max((avg + 0.1) / 0.2 * 100, 0), 100);
+                    return (
+                      <div key={c.name} style={{ marginBottom: 10 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+                          <span style={{ fontSize: 10, fontWeight: 600 }}>{c.name}</span>
+                          <span style={{ fontSize: 9, fontFamily: "'Space Grotesk'", fontWeight: 600, color: avg >= 0 ? T.green : T.red }}>{avg >= 0 ? "+" : ""}{avg.toFixed(3)}%</span>
+                        </div>
+                        <div style={{ height: 6, background: "rgba(255,255,255,0.04)", borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${strength}%`, background: avg >= 0 ? T.green : T.red, borderRadius: 4, transition: "width 0.5s" }} />
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
+
+              {/* Week Ahead */}
               <div style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10 }}>{t("economicX")}</div>
-                {ECON_TWEETS.map((t, i) => (
-                  <div key={i} style={{ padding: "8px 10px", borderRadius: 8, marginBottom: 4, background: "rgba(255,255,255,0.025)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
-                      <span style={{ fontSize: 10, fontWeight: 600 }}>{t.author}</span>
-                      <span style={{ fontSize: 8, color: T.textDim }}>{t.time}</span>
-                    </div>
-                    <div style={{ fontSize: 10, lineHeight: 1.5 }}>{t.text}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10 }}>{lang === "de" ? "Diese Woche" : "Week Ahead"}</div>
+                {(() => {
+                  const days = {};
+                  NEWS_EVENTS.forEach(e => {
+                    if (!days[e.date]) days[e.date] = [];
+                    days[e.date].push(e);
+                  });
+                  return Object.entries(days).slice(0, 5).map(([date, events]) => {
+                    const d = new Date(date);
+                    const dayName = d.toLocaleDateString(lang === "de" ? "de-DE" : "en-US", { weekday: "short" });
+                    const dateStr = d.toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", { day: "numeric", month: "short" });
+                    const isToday = date === new Date().toISOString().slice(0, 10);
+                    return (
+                      <div key={date} style={{ marginBottom: 8, padding: "6px 8px", borderRadius: 8, background: isToday ? `${T.accent}08` : "transparent", borderLeft: isToday ? `2px solid ${T.accent}` : "2px solid transparent" }}>
+                        <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? T.accent : T.textDim, marginBottom: 3 }}>
+                          {dayName} {dateStr} {isToday && <span style={{ fontSize: 7, color: T.accent }}>TODAY</span>}
+                        </div>
+                        {events.slice(0, 3).map((e, i) => (
+                          <div key={i} style={{ fontSize: 9, color: T.text, lineHeight: 1.6, display: "flex", gap: 6 }}>
+                            <span style={{ color: T.textDim, minWidth: 32 }}>{e.time}</span>
+                            <span style={{ fontSize: 7, fontWeight: 700, color: e.currency === "USD" ? T.green : T.accent, minWidth: 22 }}>{e.currency}</span>
+                            <span>{e.event}</span>
+                          </div>
+                        ))}
+                        {events.length > 3 && <div style={{ fontSize: 8, color: T.textMuted, marginTop: 2 }}>+{events.length - 3} more</div>}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+
+            {/* Active Sessions */}
+            <div style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 14, marginTop: 12 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10 }}>{lang === "de" ? "Sessions" : "Active Sessions"}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+                {sessions.map(s => (
+                  <div key={s.name} style={{ textAlign: "center", padding: "10px 6px", borderRadius: 8, background: s.open ? `${T.green}10` : "rgba(255,255,255,0.02)", border: `1px solid ${s.open ? T.green + "30" : T.glassBorder}` }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.open ? T.green : T.textMuted, margin: "0 auto 6px", boxShadow: s.open ? `0 0 8px ${T.green}60` : "none" }} />
+                    <div style={{ fontSize: 10, fontWeight: 600, color: s.open ? T.text : T.textDim }}>{s.name}</div>
+                    <div style={{ fontSize: 8, fontWeight: 600, color: s.open ? T.green : T.textMuted, marginTop: 2 }}>{s.open ? (lang === "de" ? "AKTIV" : "OPEN") : (lang === "de" ? "ZU" : "CLOSED")}</div>
                   </div>
                 ))}
               </div>
