@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head><title>Obitra Icon Generator</title></head>
+<body style="background:#111;color:#fff;font-family:sans-serif;text-align:center;padding:40px">
+<h2>Obitra Icon Generator</h2>
+<p>Klicke die Buttons um die Icons zu downloaden. Dann in <code>public/</code> speichern.</p>
+<canvas id="c" style="display:none"></canvas>
+<br><br>
+<button onclick="gen(192)">Download icon-192.png</button>
+<button onclick="gen(512)">Download icon-512.png</button>
+<script>
+function gen(s) {
+  const c = document.getElementById('c');
+  c.width = s; c.height = s;
+  const ctx = c.getContext('2d');
+  // Background
+  const r = s * 0.2;
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(s - r, 0); ctx.quadraticCurveTo(s, 0, s, r);
+  ctx.lineTo(s, s - r); ctx.quadraticCurveTo(s, s, s - r, s);
+  ctx.lineTo(r, s); ctx.quadraticCurveTo(0, s, 0, s - r);
+  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
+  ctx.closePath();
+  const bg = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  bg.addColorStop(0, '#1a1a2e'); bg.addColorStop(1, '#111111');
+  ctx.fillStyle = bg; ctx.fill();
+  // Glow
+  const glow = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s*0.35);
+  glow.addColorStop(0, 'rgba(90,125,159,0.6)');
+  glow.addColorStop(0.5, 'rgba(90,125,159,0.2)');
+  glow.addColorStop(1, 'rgba(90,125,159,0)');
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(s/2, s/2, s*0.35, 0, Math.PI*2); ctx.fill();
+  // Core
+  const core = ctx.createRadialGradient(s/2, s*0.45, 0, s/2, s/2, s*0.18);
+  core.addColorStop(0, '#ffffff'); core.addColorStop(0.3, '#b8d4f0');
+  core.addColorStop(0.6, '#5a7d9f'); core.addColorStop(1, '#2a4a6b');
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(s/2, s/2, s*0.18, 0, Math.PI*2); ctx.fill();
+  // Inner bright
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath(); ctx.arc(s/2, s/2, s*0.1, 0, Math.PI*2); ctx.fill();
+  // Download
+  const a = document.createElement('a');
+  a.download = `icon-${s}.png`;
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+</script>
+</body>
+</html>
