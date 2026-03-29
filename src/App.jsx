@@ -1455,7 +1455,7 @@ export default function TradingHub() {
         background: isMobile ? (theme === "dark" ? "#111111" : "#ffffff") : (theme === "dark" ? "rgba(255,255,255,0.03)" : T.card),
         borderRight: `1px solid ${T.glassBorder}`,
         display: "flex", flexDirection: "column",
-        paddingTop: isMobile ? "max(12px, env(safe-area-inset-top))" : 12, paddingBottom: isMobile ? "max(8px, env(safe-area-inset-bottom))" : 0, paddingLeft: 0, paddingRight: 0,
+        padding: "12px 0",
         transition: "transform 0.3s ease, background 0.3s",
         backdropFilter: isMobile ? "none" : T.glassBlur, WebkitBackdropFilter: isMobile ? "none" : T.glassBlur,
         zIndex: 100,
@@ -1541,11 +1541,11 @@ export default function TradingHub() {
       </div>
 
       {/* ══ MAIN CONTENT ══ */}
-      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? "0 10px 10px" : 20, paddingTop: isMobile ? 0 : 20, paddingBottom: isMobile ? "max(10px, env(safe-area-inset-bottom))" : 20, position: "relative", fontSize: baseFontSize, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
+      <div className="ob-content" style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? "6px 10px 16px" : 20, position: "relative", fontSize: baseFontSize, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
         <StarField theme={theme} />
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tab === "chat" ? 6 : 10, position: "relative", zIndex: 1, flexShrink: 0, paddingTop: isMobile ? 6 : 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: tab === "chat" ? 6 : 10, position: "relative", zIndex: 1, flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {isMobile && (
               <div onClick={() => setSidebarOpen(true)}
@@ -2559,7 +2559,7 @@ export default function TradingHub() {
                   })}
                   <div ref={chatEndRef} />
                 </div>
-                <div style={{ padding: isMobile ? "6px 10px max(6px, env(safe-area-inset-bottom))" : "6px 10px", borderTop: `1px solid ${T.glassBorder}`, flexShrink: 0 }}>
+                <div className="ob-chat-bar" style={{ padding: "6px 10px", borderTop: `1px solid ${T.glassBorder}`, flexShrink: 0 }}>
                   {chatImgUrl && (
                     <div style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
                       <img src={chatImgUrl} style={{ maxHeight: 36, borderRadius: 4 }} />
@@ -2594,7 +2594,7 @@ export default function TradingHub() {
         @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 0 ${T.accent}00; } 50% { box-shadow: 0 0 12px 2px ${T.accent}30; } }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; overflow: hidden; overscroll-behavior: none; position: fixed; width: 100%; }
+        html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${theme === "dark" ? "rgba(255,255,255,0.08)" : T.glassBorder}; border-radius: 4px; }
@@ -2605,9 +2605,11 @@ export default function TradingHub() {
           input, select, textarea { font-size: 16px !important; }
           input[type="number"] { font-size: 16px !important; }
         }
-        /* iOS safe areas */
+        /* iOS safe areas via CSS classes */
         @supports (padding: env(safe-area-inset-top)) {
-          .ob-safe { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+          .ob-safe { padding-top: env(safe-area-inset-top); }
+          .ob-content { padding-bottom: env(safe-area-inset-bottom) !important; }
+          .ob-chat-bar { padding-bottom: calc(6px + env(safe-area-inset-bottom)) !important; }
         }
         .ob-card { transition: all 0.2s ease; }
         .ob-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 0 0 1px ${T.accent}15; }
