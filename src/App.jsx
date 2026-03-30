@@ -296,15 +296,6 @@ async function fetchEconomicCalendar() {
   }
 }
 
-const HIGH_IMPACT_NEWS = [
-  { time: "12min ago", headline: "Core PCE expected at 0.2% — in line with Fed's disinflation target, markets await confirmation", source: "Reuters", currency: "USD", sentiment: "dovish" },
-  { time: "28min ago", headline: "ECB's Lane: 'Inflation path remains uncertain, data-dependent approach continues'", source: "ECB", currency: "EUR", sentiment: "hawkish" },
-  { time: "1h ago", headline: "Trump signals new tariff wave on EU auto imports — 25% discussed", source: "Bloomberg", currency: "EUR", sentiment: "bearish" },
-  { time: "2h ago", headline: "US 10Y yield steady at 4.25% ahead of key employment data this week", source: "CNBC", currency: "USD", sentiment: "neutral" },
-  { time: "3h ago", headline: "German Ifo Business Climate falls to 86.7, below 87.5 consensus", source: "Ifo Institute", currency: "EUR", sentiment: "bearish" },
-  { time: "5h ago", headline: "Fed's Waller: 'Two rate cuts still appropriate for 2026 if data cooperates'", source: "Fed", currency: "USD", sentiment: "dovish" },
-  { time: "6h ago", headline: "Eurozone Q1 GDP growth revised down to 0.1% from 0.2%", source: "Eurostat", currency: "EUR", sentiment: "bearish" },
-];
 
 /* ═══════════════════════════════════════
    STATS CALCULATOR
@@ -1393,7 +1384,6 @@ export default function TradingHub() {
     { id: "journal", icon: "journal", label: t("journal") },
     { type: "divider" },
     { id: "news", icon: "news", label: t("newsHub") },
-    { id: "social", icon: "social", label: t("socialIntel") },
     { type: "divider" },
     { id: "chat", icon: "chat", label: t("chatRoom") },
     { id: "edu", icon: "lab", label: "Lab" },
@@ -1401,7 +1391,7 @@ export default function TradingHub() {
 
   const tabTitles = {
     dashboard: t("titleDashboard"), chart: t("titleChart"), journal: t("titleJournal"),
-    news: t("titleNews"), social: t("titleSocial"),
+    news: t("titleNews"),
     chat: t("titleChat"), edu: lang === "de" ? "Lab" : "Lab",
   };
 
@@ -2264,125 +2254,6 @@ export default function TradingHub() {
         )}
 
         {/* ═══ SOCIAL ═══ */}
-        {tab === "social" && (
-          <div style={{ position: "relative", zIndex: 1 }}>
-            {/* What to Watch */}
-            <div style={{ background: T.glass, border: `1px solid ${T.accent}20`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 14, marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8 }}>{lang === "de" ? "Worauf achten" : "What to Watch"}</div>
-              {[
-                ...HIGH_IMPACT_NEWS.slice(0, 3).map(n => ({ text: n.headline, tag: n.sentiment, currency: n.currency })),
-                ...NEWS_EVENTS.filter(e => e.date === new Date().toISOString().slice(0, 10)).slice(0, 3).map(e => ({ text: `${e.time} — ${e.event}`, tag: "event", currency: e.currency })),
-              ].map((item, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0", borderBottom: i < 5 ? `1px solid ${T.glassBorder}` : "none" }}>
-                  <span style={{ width: 4, height: 4, borderRadius: "50%", background: T.accent, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, lineHeight: 1.4, flex: 1 }}>{item.text}</span>
-                  <span style={{ fontSize: 7, fontWeight: 700, color: item.currency === "USD" ? T.green : T.accent, flexShrink: 0 }}>{item.currency}</span>
-                  <span style={{ fontSize: 7, fontWeight: 600, padding: "1px 5px", borderRadius: 4, flexShrink: 0, background: item.tag === "dovish" || item.tag === "bullish" ? `${T.green}15` : item.tag === "event" ? `${T.accent}15` : `${T.red}15`, color: item.tag === "dovish" || item.tag === "bullish" ? T.green : item.tag === "event" ? T.accentLight : T.red }}>{item.tag}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* High Impact News */}
-            <div style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 16, marginBottom: 14 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10 }}>{t("highImpactNews")}</div>
-              {HIGH_IMPACT_NEWS.map((n, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, padding: "8px 8px", borderRadius: 8, marginBottom: 2, background: "rgba(255,255,255,0.02)", alignItems: "flex-start" }}>
-                  <span style={{ fontSize: 8, color: T.textDim, minWidth: 48, paddingTop: 2 }}>{n.time}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 10, fontWeight: 500, lineHeight: 1.4 }}>{n.headline}</div>
-                    <div style={{ display: "flex", gap: 6, marginTop: 3 }}>
-                      <span style={{ fontSize: 8, color: T.textDim }}>{n.source}</span>
-                      <span style={{ fontSize: 7, fontWeight: 700, color: n.currency === "USD" ? T.green : T.accent }}>{n.currency}</span>
-                      <span style={{ fontSize: 7, fontWeight: 600, padding: "0 4px", borderRadius: 4, background: n.sentiment === "dovish" || n.sentiment === "bullish" ? `${T.green}15` : n.sentiment === "neutral" ? `${T.accent}15` : `${T.red}15`, color: n.sentiment === "dovish" || n.sentiment === "bullish" ? T.green : n.sentiment === "neutral" ? T.accentLight : T.red }}>{n.sentiment}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 12 }}>
-              {/* Currency Strength */}
-              <div style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10 }}>{lang === "de" ? "Währungsstärke" : "Currency Strength"}</div>
-                {(() => {
-                  const currencies = [
-                    { name: "USD", pairs: [{ sym: "EUR/USD", inv: true }, { sym: "GBP/USD", inv: true }, { sym: "USD/JPY", inv: false }] },
-                    { name: "EUR", pairs: [{ sym: "EUR/USD", inv: false }] },
-                    { name: "GBP", pairs: [{ sym: "GBP/USD", inv: false }] },
-                    { name: "JPY", pairs: [{ sym: "USD/JPY", inv: true }] },
-                  ];
-                  return currencies.map(c => {
-                    const changes = c.pairs.map(p => {
-                      const pr = prices.find(x => x.symbol === p.sym);
-                      return pr ? (p.inv ? -pr.change : pr.change) : 0;
-                    });
-                    const avg = changes.reduce((s, v) => s + v, 0) / changes.length;
-                    const strength = Math.min(Math.max((avg + 0.1) / 0.2 * 100, 0), 100);
-                    return (
-                      <div key={c.name} style={{ marginBottom: 10 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-                          <span style={{ fontSize: 10, fontWeight: 600 }}>{c.name}</span>
-                          <span style={{ fontSize: 9, fontFamily: "'Space Grotesk'", fontWeight: 600, color: T.accentLight }}>{avg >= 0 ? "+" : ""}{avg.toFixed(3)}%</span>
-                        </div>
-                        <div style={{ height: 6, background: "rgba(255,255,255,0.04)", borderRadius: 4, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${strength}%`, background: `linear-gradient(90deg, ${T.accent}, ${T.accentLight})`, borderRadius: 4, transition: "width 0.5s", opacity: strength > 50 ? 1 : 0.5 }} />
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-
-              {/* Week Ahead */}
-              <div style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10 }}>{lang === "de" ? "Diese Woche" : "Week Ahead"}</div>
-                {(() => {
-                  const days = {};
-                  NEWS_EVENTS.forEach(e => {
-                    if (!days[e.date]) days[e.date] = [];
-                    days[e.date].push(e);
-                  });
-                  return Object.entries(days).slice(0, 5).map(([date, events]) => {
-                    const d = new Date(date);
-                    const dayName = d.toLocaleDateString(lang === "de" ? "de-DE" : "en-US", { weekday: "short" });
-                    const dateStr = d.toLocaleDateString(lang === "de" ? "de-DE" : "en-GB", { day: "numeric", month: "short" });
-                    const isToday = date === new Date().toISOString().slice(0, 10);
-                    return (
-                      <div key={date} style={{ marginBottom: 8, padding: "6px 8px", borderRadius: 8, background: isToday ? `${T.accent}08` : "transparent", borderLeft: isToday ? `2px solid ${T.accent}` : "2px solid transparent" }}>
-                        <div style={{ fontSize: 9, fontWeight: 700, color: isToday ? T.accent : T.textDim, marginBottom: 3 }}>
-                          {dayName} {dateStr} {isToday && <span style={{ fontSize: 7, color: T.accent }}>TODAY</span>}
-                        </div>
-                        {events.slice(0, 3).map((e, i) => (
-                          <div key={i} style={{ fontSize: 9, color: T.text, lineHeight: 1.6, display: "flex", gap: 6 }}>
-                            <span style={{ color: T.textDim, minWidth: 32 }}>{e.time}</span>
-                            <span style={{ fontSize: 7, fontWeight: 700, color: e.currency === "USD" ? T.green : T.accent, minWidth: 22 }}>{e.currency}</span>
-                            <span>{e.event}</span>
-                          </div>
-                        ))}
-                        {events.length > 3 && <div style={{ fontSize: 8, color: T.textMuted, marginTop: 2 }}>+{events.length - 3} more</div>}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
-
-            {/* Active Sessions */}
-            <div style={{ background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 14, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur, padding: 14, marginTop: 12 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 10 }}>{lang === "de" ? "Sessions" : "Active Sessions"}</div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-                {sessions.map(s => (
-                  <div key={s.name} style={{ textAlign: "center", padding: "10px 6px", borderRadius: 8, background: s.open ? `${T.accent}10` : "rgba(255,255,255,0.02)", border: `1px solid ${s.open ? T.accent + "30" : T.glassBorder}` }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: s.open ? T.accent : T.textMuted, margin: "0 auto 6px", boxShadow: s.open ? `0 0 8px ${T.accent}60` : "none" }} />
-                    <div style={{ fontSize: 10, fontWeight: 600, color: s.open ? T.text : T.textDim }}>{s.name}</div>
-                    <div style={{ fontSize: 8, fontWeight: 600, color: s.open ? T.accentLight : T.textMuted, marginTop: 2 }}>{s.open ? (lang === "de" ? "AKTIV" : "OPEN") : (lang === "de" ? "ZU" : "CLOSED")}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ═══ EDUCATION ═══ */}
         {tab === "edu" && (
           <div style={{ position: "relative", zIndex: 1 }}>
@@ -2408,7 +2279,7 @@ export default function TradingHub() {
                     <div style={{ marginBottom: 10 }}>
                       <ImageUpload value={galleryThumb} onChange={setGalleryThumb} label={lang === "de" ? "Thumbnail" : "Thumbnail"} T={T} />
                     </div>
-                    <button onClick={saveGallery} className="ob-btn"
+                    <button onClick={saveGallery}
                       className="ob-btn" style={{ padding: "8px 20px", borderRadius: 8, background: T.accent, border: "none", boxShadow: `0 2px 12px ${T.accent}35`, color: "#fff", fontSize: 10, fontWeight: 600, cursor: "pointer" }}>
                       {lang === "de" ? "Erstellen" : "Create"}
                     </button>
@@ -2421,7 +2292,7 @@ export default function TradingHub() {
                     <div style={{ fontSize: 10, color: T.textMuted, marginTop: 4 }}>{lang === "de" ? "Erstelle eine Galerie wie \"Strategie\" oder \"Mindset\"" : "Create a gallery like \"Strategy\" or \"Mindset\""}</div>
                   </div>
                 )}
-                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr 1fr", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "1fr 1fr 1fr", gap: 12 }}>
                   {labGalleries.map(g => (
                     <div key={g.id} onClick={() => setActiveGallery(g.id)}
                       className="ob-gallery"
@@ -2458,7 +2329,7 @@ export default function TradingHub() {
                 {/* Inside a Gallery */}
                 {(() => {
                   const gallery = labGalleries.find(g => g.id === activeGallery);
-                  if (!gallery) { setActiveGallery(null); return null; }
+                  if (!gallery) return <div style={{ textAlign: "center", padding: 20 }}><span onClick={() => setActiveGallery(null)} style={{ color: T.accent, cursor: "pointer" }}>← {lang === "de" ? "Zurück" : "Back"}</span></div>;
                   return (
                     <>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
