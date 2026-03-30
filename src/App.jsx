@@ -218,11 +218,18 @@ async function sSet(k, v) {
   try { localStorage.setItem(`ob:${k}`, JSON.stringify(v)); } catch (e) { console.error(e); }
 }
 async function sGetShared(k) {
-  try { return await fbGet(k); }
+  // Try Firebase first, fall back to localStorage
+  try {
+    const fb = await fbGet(k);
+    if (fb !== null) return fb;
+  } catch {}
+  try { const v = localStorage.getItem(`ob-shared:${k}`); return v ? JSON.parse(v) : null; }
   catch { return null; }
 }
 async function sSetShared(k, v) {
-  try { await fbSet(k, v); } catch (e) { console.error(e); }
+  // Write to both Firebase and localStorage
+  try { localStorage.setItem(`ob-shared:${k}`, JSON.stringify(v)); } catch {}
+  try { await fbSet(k, v); } catch {}
 }
 
 /* ═══════════════════════════════════════
@@ -1156,37 +1163,46 @@ export default function TradingHub() {
     return () => clearInterval(t);
   }, []);
 
-  // ── Chat + Lab realtime via Firebase ──
+  // ── Chat + Lab sync ──
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
   }, []);
 
-  // Realtime chat listener — instant updates, no polling
+  // Chat polling with notifications
   useEffect(() => {
-    const unsub = fbListen("hub-chat-v2", (d) => {
-      if (d && Array.isArray(d)) {
-        // Push notification for new messages
-        if (d.length > lastChatCount.current && lastChatCount.current > 0 && tab !== "chat") {
-          const latest = d[d.length - 1];
-          if (latest && latest.name !== chatName && "Notification" in window && Notification.permission === "granted") {
-            new Notification(`Obitra — ${latest.name}`, { body: latest.text || "Sent an image", icon: "/icon-192.png" });
+    const poll = async () => {
+      try {
+        const d = await sGetShared("hub-chat-v2");
+        if (d && Array.isArray(d)) {
+          if (d.length > lastChatCount.current && lastChatCount.current > 0 && tab !== "chat") {
+            const latest = d[d.length - 1];
+            if (latest && latest.name !== chatName && "Notification" in window && Notification.permission === "granted") {
+              try { new Notification(`Obitra — ${latest.name}`, { body: latest.text || "Image", icon: "/icon-192.png" }); } catch {}
+            }
           }
+          lastChatCount.current = d.length;
+          setChatMsgs(d);
         }
-        lastChatCount.current = d.length;
-        setChatMsgs(d);
-      }
-    });
-    return () => unsub && unsub();
+      } catch {}
+    };
+    poll();
+    const t = setInterval(poll, 2000);
+    return () => clearInterval(t);
   }, [tab, chatName]);
 
-  // Realtime lab galleries listener
+  // Lab polling
   useEffect(() => {
-    const unsub = fbListen("lab-galleries", (d) => {
-      if (d && Array.isArray(d)) setLabGalleries(d);
-    });
-    return () => unsub && unsub();
+    const poll = async () => {
+      try {
+        const d = await sGetShared("lab-galleries");
+        if (d && Array.isArray(d)) setLabGalleries(d);
+      } catch {}
+    };
+    poll();
+    const t = setInterval(poll, 5000);
+    return () => clearInterval(t);
   }, []);
 
   // ── Load live economic calendar ──
@@ -1396,7 +1412,7 @@ export default function TradingHub() {
   // ── LOGIN SCREEN ──
   if (!userId) {
     return (
-      <div style={{ display: "flex", height: "100dvh", minHeight: "-webkit-fill-available", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, alignItems: "center", justifyContent: "center", transition: "background 0.3s", position: "relative", overflow: "hidden", fontSize: baseFontSize }}>
+      <div style={{ display: "flex", height: "100vh", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, alignItems: "center", justifyContent: "center", transition: "background 0.3s", position: "relative", overflow: "hidden", fontSize: baseFontSize }}>
         <StarField theme={theme} />
         <div style={{ position: "fixed", top: 18, right: 18, display: "flex", gap: 6, zIndex: 2 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 2, background: T.glass, border: `1px solid ${T.glassBorder}`, borderRadius: 20, padding: 2, backdropFilter: T.glassBlur, WebkitBackdropFilter: T.glassBlur }}>
@@ -1441,7 +1457,7 @@ export default function TradingHub() {
 
   // ── MAIN APP ──
   return (
-    <div className="ob-safe" style={{ display: "flex", height: "100dvh", minHeight: "-webkit-fill-available", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, overflow: "hidden", transition: "background 0.3s", position: "relative" }}>
+    <div style={{ display: "flex", height: "100vh", background: T.bg, color: T.text, fontFamily: "'DM Sans', sans-serif", fontSize: 13, overflow: "hidden", transition: "background 0.3s", position: "relative" }}>
       {theme === "dark" && <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 20% 20%, rgba(90,125,159,0.06) 0%, transparent 50%), radial-gradient(ellipse at 80% 80%, rgba(122,157,191,0.04) 0%, transparent 50%)", pointerEvents: "none", zIndex: 0 }} />}
 
       {/* Mobile backdrop */}
@@ -1454,8 +1470,7 @@ export default function TradingHub() {
         width: isMobile ? 260 : 195, minWidth: isMobile ? 260 : 195,
         background: isMobile ? (theme === "dark" ? "#111111" : "#ffffff") : (theme === "dark" ? "rgba(255,255,255,0.03)" : T.card),
         borderRight: `1px solid ${T.glassBorder}`,
-        display: "flex", flexDirection: "column",
-        padding: "12px 0",
+        display: "flex", flexDirection: "column", padding: "12px 0",
         transition: "transform 0.3s ease, background 0.3s",
         backdropFilter: isMobile ? "none" : T.glassBlur, WebkitBackdropFilter: isMobile ? "none" : T.glassBlur,
         zIndex: 100,
@@ -1486,6 +1501,9 @@ export default function TradingHub() {
               {item.label}
               {item.id === "news" && NEWS_EVENTS.some(e => e.date === new Date().toISOString().slice(0, 10)) && (
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.red, marginLeft: "auto", boxShadow: `0 0 6px ${T.red}80`, animation: "pulse 2s infinite" }} />
+              )}
+              {item.id === "chat" && tab !== "chat" && chatMsgs.length > 0 && lastChatCount.current > 0 && chatMsgs.length !== lastChatCount.current && (
+                <span style={{ marginLeft: "auto", fontSize: 8, fontWeight: 700, background: T.accent, color: "#fff", borderRadius: 10, padding: "1px 6px", minWidth: 16, textAlign: "center" }}>!</span>
               )}
             </div>
           ))}
@@ -1541,7 +1559,7 @@ export default function TradingHub() {
       </div>
 
       {/* ══ MAIN CONTENT ══ */}
-      <div className="ob-content" style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? "6px 10px 16px" : 20, position: "relative", fontSize: baseFontSize, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ flex: 1, overflow: tab === "chat" ? "hidden" : "auto", padding: isMobile ? 10 : 20, position: "relative", fontSize: baseFontSize, display: tab === "chat" ? "flex" : "block", flexDirection: "column", WebkitOverflowScrolling: "touch" }}>
         <StarField theme={theme} />
 
         {/* Header */}
@@ -2559,7 +2577,7 @@ export default function TradingHub() {
                   })}
                   <div ref={chatEndRef} />
                 </div>
-                <div className="ob-chat-bar" style={{ padding: "6px 10px", borderTop: `1px solid ${T.glassBorder}`, flexShrink: 0 }}>
+                <div style={{ padding: "8px 10px", borderTop: `1px solid ${T.glassBorder}`, flexShrink: 0 }}>
                   {chatImgUrl && (
                     <div style={{ marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
                       <img src={chatImgUrl} style={{ maxHeight: 36, borderRadius: 4 }} />
@@ -2591,33 +2609,24 @@ export default function TradingHub() {
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         @keyframes orbPulse { 0%, 100% { transform: scale(1); filter: drop-shadow(0 2px 10px rgba(90,125,159,0.4)); } 50% { transform: scale(1.06); filter: drop-shadow(0 4px 20px rgba(90,125,159,0.6)); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
         @keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 0 ${T.accent}00; } 50% { box-shadow: 0 0 12px 2px ${T.accent}30; } }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+        html { height: 100%; }
+        body { height: 100%; overflow: hidden; }
         ::-webkit-scrollbar { width: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: ${theme === "dark" ? "rgba(255,255,255,0.08)" : T.glassBorder}; border-radius: 4px; }
         select option { background: ${theme === "dark" ? "#1a1a1a" : "#fff"}; color: ${T.text}; }
         input[type="date"]::-webkit-calendar-picker-indicator { filter: ${theme === "dark" ? "invert(0.7)" : "none"}; }
-        /* iOS: prevent auto-zoom on input focus */
         @media screen and (max-width: 768px) {
           input, select, textarea { font-size: 16px !important; }
-          input[type="number"] { font-size: 16px !important; }
-        }
-        /* iOS safe areas via CSS classes */
-        @supports (padding: env(safe-area-inset-top)) {
-          .ob-safe { padding-top: env(safe-area-inset-top); }
-          .ob-content { padding-bottom: env(safe-area-inset-bottom) !important; }
-          .ob-chat-bar { padding-bottom: calc(6px + env(safe-area-inset-bottom)) !important; }
         }
         .ob-card { transition: all 0.2s ease; }
-        .ob-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.15), 0 0 0 1px ${T.accent}15; }
+        .ob-card:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
         .ob-btn { transition: all 0.15s ease; }
-        .ob-btn:hover { transform: translateY(-1px); filter: brightness(1.1); box-shadow: 0 4px 16px ${T.accent}40; }
+        .ob-btn:hover { transform: translateY(-1px); filter: brightness(1.1); }
         .ob-btn:active { transform: scale(0.97); }
-        .ob-link:hover { color: ${T.accentLight} !important; }
-        .ob-gallery:hover { border-color: ${T.accent}40 !important; transform: translateY(-2px); box-shadow: 0 12px 32px rgba(0,0,0,0.2); }
+        .ob-gallery:hover { border-color: ${T.accent}40 !important; transform: translateY(-2px); }
         .ob-side-item { transition: all 0.15s ease; }
         .ob-side-item:hover { background: ${T.accent}12 !important; }
         .ob-orb { animation: orbPulse 3s ease-in-out infinite; }
